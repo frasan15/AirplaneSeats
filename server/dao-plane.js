@@ -1,6 +1,6 @@
 'use strict'
 
-// Data Access Object (DAO) module for accessing films data
+// Data Access Object (DAO) module for accessing plane data
 
 const db = require('./db');
 
@@ -13,6 +13,9 @@ exports.listSeats = (type) => {
             if (err) {
                 reject(err);
             }
+            if(rows.length === 0){
+                resolve([{error: "plane type not found"}])
+            }
         resolve(rows);
         })
     })
@@ -20,12 +23,15 @@ exports.listSeats = (type) => {
 
 //this functions returns all the reservations performed by the same user; TODO: it could be useful to also check 
 //if the these reservations belongs to the same plane
-exports.listSeatsByUser = (userEmail) => {
+exports.listSeatsByUser = (userEmail, type) => {
     return new Promise((resolve, reject) => {
-        const sql = 'SELECT * FROM plane WHERE userEmail=?';
-        db.all(sql, [userEmail], (err, rows) => {
+        const sql = 'SELECT * FROM plane WHERE userEmail=? AND type=?';
+        db.all(sql, [userEmail, type], (err, rows) => {
             if(err){
                 reject(err);
+            }
+            if(rows.length === 0){
+                resolve([{error: "No reservations found with the specified user's email on the specified plane type"}]);
             }
         resolve(rows);
         })
@@ -37,11 +43,11 @@ exports.listSeatsByUser = (userEmail) => {
 exports.isOccupied = (rowId) => {
     return new Promise((resolve, reject) => {
         const sql = 'SELECT userEmail FROM plane WHERE rowId=?'
-        db.get(sql, [rowId], (err, userEmail) => {
+        db.get(sql, [rowId], (err, row) => {
             if(err){
                 reject(err);
             }
-        if(userEmail === null){
+        if(row.userEmail === null){
             resolve(false);
         }
         resolve(true);
@@ -66,19 +72,19 @@ exports.isAuthorized = (rowId, userEmail) => {
     })
 };
 
-//this function checks if the specified user already owns other reservations on other planes
+//this function checks if the specified user already owns other reservations on the same plane type
 //if so, it returns an error, otherwise it returns null
 exports.hasAlreadyReservations = (userEmail, type) => {
     return new Promise((resolve, reject) => {
-        const sql = 'SELECT * FROM plane WHERE userEmail=? AND type<>?'
+        const sql = 'SELECT * FROM plane WHERE userEmail=? AND type=?'
         db.all(sql, [userEmail, type], (err, rows) => {
             if(err){
                 reject(err);
             }
             if(rows.length > 0){
-                resolve({error: "the specified user already owns reservations on other planes"});
+                resolve({error: `the specified user already owns reservations on the plane type: ${type}`});
             }
-            resolve(null);
+            resolve({});
         })
     })
 };
@@ -104,22 +110,25 @@ exports.getSeatByTriplet = (row, seat, type) => {
 //by its rowId; it returns an empty array otherwise
 exports.getFirstFreeSeats = (type, number) => {
     return new Promise((resolve, reject) => {
-        const sql = 'SELECT rowId, COUNT(*) AS tot FROM plane WHERE type=? AND userEmail=?'
-        db.all(sql, [type, null], (err, rows) => {
+        const sql = 'SELECT rowId FROM plane WHERE type=? AND userEmail IS NULL'
+        db.all(sql, [type], (err, rows) => {
             if(err){
                 reject(err);
             }
-            if(rows[1].tot >= number){
-                const index = 0;
-                const result = rows.map(row => {
+
+            if(rows.length >= number){
+                let index = 0;
+                const result = [];
+                for (const row of rows){
                     if(index < number){
                         index++;
-                        return row.rowId
+                        result.push(row.rowId)
                     }
-                });
+                }
                 resolve(result);
+            }else{
+                resolve([{error: "there are not enough seats to perform the requested reservation or plane type not found"}])
             }
-            resolve([])
         })
     })
 };
@@ -143,21 +152,24 @@ exports.addReservation = (userEmail, rowId) => {
     })
 };
 
-//this function deletes a reservation on a single seat; the userEmail param represents the user who is trying to
-//delete his own reservation; that value must be turned into NULL. It returns the updated row
-exports.deleteReservation = (userEmail, rowId) => {
+//this function deletes a reservation of a specific user on a specific plane, thereby 
+//cancelling the entire reservation; the userEmail param represents the user who is trying to
+//delete his own reservation; that value must be turned into NULL.
+//it returns an error in case the user had no reservations on that plane,
+//returns an empty object otherwise
+exports.deleteReservation = (userEmail, type) => {//ho tolto rowId e aggiunto type
     return new Promise((resolve, reject) => {
-        const sql = 'UPDATE plane SET userEmail=? WHERE userEmail=? AND rowId=?';
+        const sql = 'UPDATE plane SET userEmail=? WHERE userEmail=? AND type=?';
         //TODO: this option could be useful to check if the user who is trying to delete the reservation
         //is the same who reserved it in the first place
-        db.run(sql, [null, userEmail, rowId], function (err) {
+        db.run(sql, [null, userEmail, type], function (err) {
             if(err){
                 reject(err);
             }
-            if(this.changes !== 1){
-                resolve({error: "No reservation deleted"});
+            if(this.changes === 0){
+                resolve({error: "Plane type not found or reservations not found"});
             }else{
-                resolve(null);
+                resolve({});
             }
         })
     })

@@ -1,0 +1,50 @@
+# This file could be used for testing the API with Visual Studio Code
+
+## Execute Log In
+
+POST http://localhost:3001/api/sessions HTTP/1.1
+Content-Type: application/json
+
+{
+    "username": "antonio@polito.it",
+    "password": "password4"
+}
+
+###
+
+## Checking if user is still logged-in.
+GET http://localhost:3001/api/sessions/current HTTP/1.1
+###
+
+## Execute Log Out.
+DELETE http://localhost:3001/api/sessions/current HTTP/1.1
+###
+
+## Retrieve the list of all the seats belonging to the specified plane type
+GET http://localhost:3001/api/plane/international HTTP/1.1
+###
+
+## Get all the reservations made by a specific user, by providing all the relevant information
+GET http://localhost:3001/api/plane/regional/getReservations
+###
+
+## Create a reservation, by providing all the relevant information, through an array of reservations
+PUT http://localhost:3001/api/plane/local/addReservationByGrid HTTP/1.1
+Content-Type: application/json
+
+{
+    "reservations": [{"row": 1, "seat": "A"}, {"row": 1, "seat": "D"}]
+}
+###
+
+## Create a reservation, by providing the type of the plane, the user's email and the number of the requested seats
+PUT http://localhost:3001/api/plane/local/addReservationByNumber HTTP/1.1
+Content-Type: application/json
+
+{
+    "number": 2
+}
+###
+
+## Delete a reservation, by providing the plane's type and the user's email
+PUT http://localhost:3001/api/plane/local/deleteReservation HTTP/1.1

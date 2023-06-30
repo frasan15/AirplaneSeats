@@ -132,9 +132,13 @@ app.get('/api/sessions/current', (req, res) => {
 // DELETE /api/session/current
 // This route is used for loggin out the current user.
 app.delete('/api/sessions/current', (req, res) => {
+  if(req.isAuthenticated()){
   req.logout(() => {
     res.status(200).json({});
   });
+  }else{
+    res.status(401).json({error: "unauthorized user"})
+  }
 });
 
 /*** Plane APIs ***/
@@ -150,18 +154,24 @@ app.get('/api/plane/:type', isLoggedIn, [check('type').isString()], async (req, 
     }
   
     const result = await planeDao.listSeats(req.params.type);
+    
+    if(result[0].error){
+      return res.status(404).json({error: result[0].error})
+    }
+
     return res.status(200).json(result);
   }catch (err){
     return res.status(500).end();
   }
 })
 
-// 2. Get all the reservations made by a specific user, by providing all the relevant information
+// 2. Get the reservation made by a specific user, by providing all the relevant information
 // GET /api/plane/:type/getReservations
-// Given a plane type and a user's email, this route returns all the reservations performed by the specified
-// user, where a reservation is represented by a row in the plane table
-app.get('/api/plane/:type/getReservations/:userEmail', isLoggedIn, 
-[check('type').isString(), check('userEmail').isString()],
+// Given a plane type and a user's email, this route returns reservation on the specified plane
+// performed by the specified user, where a reservation is represented by a row in the plane table
+// the user's email is specified inside the req.body
+app.get('/api/plane/:type/getReservations', isLoggedIn, 
+[check('type').isString()],
 async(req, res) => {
   try{
     // Is there any validation error?
@@ -170,12 +180,18 @@ async(req, res) => {
       return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
     }
 
-    const result = await planeDao.listSeatsByUser(userEmail);
-    const isSameType = (firstType) => (obj) => obj.type === firstType;
+    const type = req.params.type;
+    const userEmail = req.user.email;
+/*
+    //if the authenticated user tries to get the reservation of another user, then an error is returned
+    if(userEmail !== req.user.email){
+      return res.status(401).json({error: "an authenticated user can only get its own reservations"})
+    }
+*/
 
-    const sameType = result.every(isSameType(firstType));
-    if(!sameType){
-      res.status(400).json({error: "each user can make reservation for one plane only"});
+    const result = await planeDao.listSeatsByUser(userEmail, type);
+    if(result[0].error){
+      return res.status(404).json({error: result[0].error})
     }
 
     return res.status(200).json(result);
@@ -197,47 +213,46 @@ app.put('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').isSt
     if (!errors.isEmpty()) {
       return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
     }
-    type = req.params.type;
+    const type = req.params.type;
     
-    //reservations are in the following format: {reservations: [{row: 15, seat: A}, {row: 15, seat: B}],
-    //userEmail: "Io@email.it"}
-    const list = req.body.reservations;
-    const userEmail = list.userEmail;
+    //reservations are in the following format: {reservations: [{row: 15, seat: A}, {row: 15, seat: B}]}
+    const list = req.body;
+    const userEmail = req.user.email;
     const reservations = list.reservations;
-    const temp = {};
+    let temp = {};
     const result = [];
-    const isOccupied = true;
+    let isOccupied = true;
     const occupiedSeats = [];
 
-    //if the user already owns reservations on other planes, then an error is returned
+    //if the user already owns reservations on the same plane, then an error is returned
     const otherReservations = await planeDao.hasAlreadyReservations(userEmail, type);
     if(otherReservations.error){
-      return res.status(422).json({error: check.error});
+      return res.status(422).json({error: otherReservations.error});
     }
 
     //if any of the requested seats is already occupied, then an error will be returned
-    reservations.forEach(async(reservation) => {
-      rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
+    for (const reservation of reservations) {
+      const rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
       isOccupied = await planeDao.isOccupied(rowId);
-      if(isOccupied){
-        occupiedSeats.push({row: reservation.row, seat: reservation.seat});
+      if (isOccupied) {
+        occupiedSeats.push({ row: reservation.row, seat: reservation.seat });
       }
-    });
+    }
 
     if(occupiedSeats.length > 0){
       //the following array will contain all the seats which caused the failure
-      return res.status(409).json(occupiedSeats);
+      return res.status(409).json({error: "the requested seats are already occupied"});
     }
 
-    reservations.forEach(async (reservation) => {
-      rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
+    for (const reservation of reservations) {
+      const rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
       temp = await planeDao.addReservation(userEmail, rowId);
       if(temp.error){
         return res.status(404).json({error: temp.error})
       }else{
         result.push(temp);
       }
-    });
+    }
 
     return res.status(200).json(result);
 
@@ -252,7 +267,7 @@ app.put('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').isSt
 // by setting the userEmail value with the one of the user who is trying to perform the reservation.
 // An object containing the user's email who is trying to perform the reservation
 // and the number of the requested seats is passed through the request body: 
-// {userEmail: "francesco@polito.it", number: 5}
+// {number: 5}
 app.put('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').isString()], async(req, res) => {
   try{
     // Is there any validation error?
@@ -260,27 +275,34 @@ app.put('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').i
     if (!errors.isEmpty()) {
       return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
     }
-    type = req.params.type;
-    const {userEmail, number} = req.body;
+    const type = req.params.type;
+    const number = req.body.number;
+    const userEmail = req.user.email
+    const result = [];
+    let temp = {};
 
-    //if the user already owns reservations on other planes, then an error is returned
+    //if the user already owns reservations on the same plane, then an error is returned
     const otherReservations = await planeDao.hasAlreadyReservations(userEmail, type);
     if(otherReservations.error){
-      return res.status(422).json({error: check.error});
+      return res.status(422).json({error: otherReservations.error});
     }
 
     //the following is an array containing the rowId of the first free seats to be booked, each provided
     //by its own rowId
     const seats = await planeDao.getFirstFreeSeats(type, number);
 
-    seats.forEach(async (rowId) => {
+    if(seats[0].error){
+      return res.status(422).json({error: seats[0].error});
+    }
+
+    for(const rowId of seats){
       temp = await planeDao.addReservation(userEmail, rowId);
       if(temp.error){
         return res.status(404).json({error: temp.error})
       }else{
         result.push(temp);
       }
-    });
+    }
 
     return res.status(200).json(result);
 
@@ -292,10 +314,9 @@ app.put('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').i
 
 // 5. Delete a reservation, by providing all the relevant information
 // PUT /api/plane/:type/deleteReservation
-// Given a plane type and the list of the reservations to be deleted, this route updates each requested seat,
+// Given a plane type and the user's email, this route updates each requested seat,
 // by setting the userEmail to null.
-// An object containing the reservation array to be deleted and the user's email who is trying to 
-// perform the cancellation of reservations is passed through the request body
+// The user's email who is trying to perform the cancellation of reservations is passed through the request body
 app.put('/api/plane/:type/deleteReservation', isLoggedIn, [check('type').isString()], async(req, res) => {
   try{
     // Is there any validation error?
@@ -303,45 +324,26 @@ app.put('/api/plane/:type/deleteReservation', isLoggedIn, [check('type').isStrin
     if (!errors.isEmpty()) {
       return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
     }
-    type = req.params.type;
-    
-    //reservations are in the following format: {reservations: [{row: 15, seat: A}, {row: 15, seat: B}],
-    //userEmail: "Io@email.it"}
-    const list = req.body.reservations;
-    const userEmail = list.userEmail;
-    const reservations = list.reservations;
-    const temp = {};
-    const result = [];
-    const isAuthorized = true;
+    const type = req.params.type;
+    const userEmail = req.user.email;
+    let result = {};
 
-    //if any of the requested seats to get free does not belong to the specified user, then an error will be returned
-    reservations.forEach(async(reservation) => {
-      rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
-      isAuthorized = await planeDao.isAuthorized(rowId, userEmail);
-      if(isAuthorized){
-        return res.status(401).json({error: "the requested seat is not booked by the current user"});
-      }
-    });
-
-    reservations.forEach(async (reservation) => {
-      rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
-      temp = await planeDao.deleteReservation(userEmail, rowId);
-      if(temp.error){
-        return res.status(404).json({error: temp.error})
-      }else{
-        result.push(temp);
-      }
-    });
+    result = await planeDao.deleteReservation(userEmail, type);
+    if(result.error){
+      return res.status(404).json({error: result.error})
+    }
 
     return res.status(200).json(result);
 
   }catch(err){
+    console.log(err.message)
     return res.status(500).end();
   }
 })
 
 
 // activate the server
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Server listening at http://localhost:${PORT}`);
 });
