@@ -132,13 +132,13 @@ app.get('/api/sessions/current', (req, res) => {
 // DELETE /api/session/current
 // This route is used for loggin out the current user.
 app.delete('/api/sessions/current', (req, res) => {
-  if(req.isAuthenticated()){
+  //if(req.isAuthenticated()){
   req.logout(() => {
     res.status(200).json({});
   });
-  }else{
+  /*}else{
     res.status(401).json({error: "unauthorized user"})
-  }
+  }*/
 });
 
 /*** Plane APIs ***/
@@ -206,7 +206,7 @@ async(req, res) => {
 // by setting the userEmail value with the one of the user who is trying to perform the reservation.
 // An object containing the reservation array and the user's email who is trying to perform the reservation
 // is passed through the request body
-app.put('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').isString()], async(req, res) => {
+app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').isString()], async(req, res) => {
   try{
     // Is there any validation error?
     const errors = validationResult(req).formatWith(errorFormatter); // format error message
@@ -268,7 +268,7 @@ app.put('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').isSt
 // An object containing the user's email who is trying to perform the reservation
 // and the number of the requested seats is passed through the request body: 
 // {number: 5}
-app.put('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').isString()], async(req, res) => {
+app.patch('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').isString()], async(req, res) => {
   try{
     // Is there any validation error?
     const errors = validationResult(req).formatWith(errorFormatter); // format error message
@@ -317,7 +317,7 @@ app.put('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').i
 // Given a plane type and the user's email, this route updates each requested seat,
 // by setting the userEmail to null.
 // The user's email who is trying to perform the cancellation of reservations is passed through the request body
-app.put('/api/plane/:type/deleteReservation', isLoggedIn, [check('type').isString()], async(req, res) => {
+app.patch('/api/plane/:type/deleteReservation', isLoggedIn, [check('type').isString()], async(req, res) => {
   try{
     // Is there any validation error?
     const errors = validationResult(req).formatWith(errorFormatter); // format error message

@@ -32,7 +32,8 @@ exports.getUser = (email, password) => {
                 reject(err);
             }
             else if(row === undefined){
-                resolve({error: 'user not found'});
+                //resolve({error: 'user not found'});
+                resolve(false);
             }
             else {
                 const user = {id: row.id, email: row.email};
@@ -42,7 +43,8 @@ exports.getUser = (email, password) => {
                         reject(err);
                     }
                     if(!crypto.timingSafeEqual(Buffer.from(row.hash, 'hex'), hashedPassword)){
-                        resolve({error: 'wrong email or password'})
+                        //resolve({error: 'wrong email or password'})
+                        resolve(false)
                     }else{
                         resolve(user);
                     }

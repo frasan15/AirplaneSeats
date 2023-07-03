@@ -49,7 +49,7 @@ function getJson(httpResponsePromise) {
    */
   const addReservationByGrid = async(type, reservations) => {
     return getJson(fetch(SERVER_URL + 'plane/' + type + 'addReservationByGrid', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
             'Content-Type': 'application/json'
         },
@@ -63,7 +63,7 @@ function getJson(httpResponsePromise) {
    */
   const addReservationByNumber = async(type, number) => {
     return getJson(fetch(SERVER_URL + 'plane/' + type + 'addReservationByNumber', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
             'Content-Type': 'application/json'
         },
@@ -77,7 +77,7 @@ function getJson(httpResponsePromise) {
    */
   const deleteReservation = async(type) => {
     return getJson(fetch(SERVER_URL + 'plane/' + type + 'deleteReservation', {
-        method: 'PUT',
+        method: 'PATCH',
         credentials: 'include'
     }))
   }

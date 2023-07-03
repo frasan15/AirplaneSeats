@@ -21,8 +21,7 @@ exports.listSeats = (type) => {
     })
 };
 
-//this functions returns all the reservations performed by the same user; TODO: it could be useful to also check 
-//if the these reservations belongs to the same plane
+//this functions returns the reservation performed by the specified user on the specified plane
 exports.listSeatsByUser = (userEmail, type) => {
     return new Promise((resolve, reject) => {
         const sql = 'SELECT * FROM plane WHERE userEmail=? AND type=?';
