@@ -24,6 +24,10 @@ DELETE http://localhost:3001/api/sessions/current HTTP/1.1
 GET http://localhost:3001/api/plane/international HTTP/1.1
 ###
 
+## Retrieve the availability of the specified plane type
+GET http://localhost:3001/api/plane/international/getAvailability HTTP/1.1
+###
+
 ## Get all the reservations made by a specific user, by providing all the relevant information
 GET http://localhost:3001/api/plane/regional/getReservations
 ###

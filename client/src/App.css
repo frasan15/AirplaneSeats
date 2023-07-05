@@ -108,3 +108,57 @@ small.watch-date {
   padding: 10px;
   border-radius: 4px;
 }
+
+/*limites the size of the cells representing the seats*/
+.limited-width-cell {
+  max-width: 100px; /* set the max width desired */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-seat-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* CSS per rendere i posti dell'aereo carini */
+.td-seat {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #f2f2f2;
+  font-weight: bold;
+  font-size: 16px;
+  color: #333333;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin: 2px
+}
+
+.td-seat:hover {
+  background-color: #dcdcdc;
+}
+
+.td-seat.selected {
+  background-color: #4287f5;
+  color: #ffffff;
+}
+
+.td-seat.disabled {
+  background-color: #e6e6e6;
+  cursor: not-allowed;
+}
+
+.custom-button {
+  max-width: 200px;
+  margin-right: 5px;
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}

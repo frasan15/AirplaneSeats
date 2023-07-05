@@ -9,9 +9,9 @@ const TopBar = (props) => {
 
     return(
         <Navbar bg="primary" expand="sm" variant="dark" fixed="top" className="navbar-padding">
-                <Link to="/">
+                <Link to="/" onClick={() => props.setDirty2(true)}>
                     <Navbar.Brand>
-                    <i class="bi bi-airplane"></i>
+                    <i className="bi bi-arrow-left"></i>
                     </Navbar.Brand>
                 </Link>
                 <Navbar.Collapse className="justify-content-center">

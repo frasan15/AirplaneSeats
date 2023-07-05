@@ -145,7 +145,7 @@ app.delete('/api/sessions/current', (req, res) => {
 // 1. Retrieve the list of all the seats belonging to the specified plane type
 // GET /api/plane/:type
 // Given a plane type, this route returns the associated set of seats. 
-app.get('/api/plane/:type', isLoggedIn, [check('type').isString()], async (req, res) => {
+app.get('/api/plane/:type', /*isLoggedIn,*/ [check('type').isString()], async (req, res) => {
   try{
     // Is there any validation error?
     const errors = validationResult(req).formatWith(errorFormatter); // format error message
@@ -153,19 +153,46 @@ app.get('/api/plane/:type', isLoggedIn, [check('type').isString()], async (req, 
       return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
     }
   
-    const result = await planeDao.listSeats(req.params.type);
+    const seats = await planeDao.listSeats(req.params.type);
     
-    if(result[0].error){
-      return res.status(404).json({error: result[0].error})
+    if(seats[0].error){
+      return res.status(404).json({error: seats[0].error})
     }
 
-    return res.status(200).json(result);
+    return res.status(200).json(seats);
   }catch (err){
     return res.status(500).end();
   }
 })
 
-// 2. Get the reservation made by a specific user, by providing all the relevant information
+// 2. Retrieve the availability of the specified plane type's seats
+// GET /api/plane/:type/getAvailability
+// Given a plane type, this route returns its own availability by specifying the number of occupied seats,
+// the number of available seats, and the total. 
+app.get('/api/plane/:type/getAvailability', /*isLoggedIn,*/ [check('type').isString()], async(req, res) => {
+  try{
+    // Is there any validation error?
+    const errors = validationResult(req).formatWith(errorFormatter); // format error message
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
+    }
+    const occupied = await planeDao.getOccupied(req.params.type);
+    const available = await planeDao.getAvailable(req.params.type);
+
+    const result = {
+      occupied,
+      available,
+      total: occupied+available
+    }
+
+    return res.status(200).json(result);
+
+  }catch (err){
+    return res.status(500).end();
+  }
+})
+
+// 3. Get the reservation made by a specific user, by providing all the relevant information
 // GET /api/plane/:type/getReservations
 // Given a plane type and a user's email, this route returns reservation on the specified plane
 // performed by the specified user, where a reservation is represented by a row in the plane table
@@ -190,9 +217,14 @@ async(req, res) => {
 */
 
     const result = await planeDao.listSeatsByUser(userEmail, type);
+
+    //I comment this part because it's not an error if the user does not own any reservation, just an empty 
+    //array will be returned
+    /*
     if(result[0].error){
       return res.status(404).json({error: result[0].error})
     }
+    */
 
     return res.status(200).json(result);
   }catch (err){
@@ -200,7 +232,7 @@ async(req, res) => {
   }
 })
 
-// 3. Create a reservation, by providing all the relevant information, through an array of reservations
+// 4. Create a reservation, by providing all the relevant information, through an array of reservations
 // PUT /api/plane/:type/addReservationByGrid
 // Given a plane type and the list of the reservations to be performed, this route updates each requested seat,
 // by setting the userEmail value with the one of the user who is trying to perform the reservation.
@@ -216,9 +248,9 @@ app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').is
     const type = req.params.type;
     
     //reservations are in the following format: {reservations: [{row: 15, seat: A}, {row: 15, seat: B}]}
-    const list = req.body;
+    //const list = req.body;
     const userEmail = req.user.email;
-    const reservations = list.reservations;
+    const reservations = req.body;
     let temp = {};
     const result = [];
     let isOccupied = true;
@@ -241,7 +273,7 @@ app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').is
 
     if(occupiedSeats.length > 0){
       //the following array will contain all the seats which caused the failure
-      return res.status(409).json({error: "the requested seats are already occupied"});
+      return res.status(207).json({message: "the requested seats are already occupied", occupiedSeats: occupiedSeats});
     }
 
     for (const reservation of reservations) {
@@ -261,20 +293,21 @@ app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').is
   }
 });
 
-// 4. Create a reservation, by providing all the relevant information, through the number of the needed seats
+// 5. Create a reservation, by providing all the relevant information, through the number of the needed seats
 // PUT /api/plane/:type/addReservationByNumber
 // Given a plane type and the number of the requested seats, this route updates each requested seat,
 // by setting the userEmail value with the one of the user who is trying to perform the reservation.
 // An object containing the user's email who is trying to perform the reservation
 // and the number of the requested seats is passed through the request body: 
 // {number: 5}
-app.patch('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type').isString()], async(req, res) => {
-  try{
+app.patch('/api/plane/:type/addReservationByNumber', isLoggedIn, [check('type').isString()], async(req, res) => {
+  try{console.log(req)
     // Is there any validation error?
     const errors = validationResult(req).formatWith(errorFormatter); // format error message
     if (!errors.isEmpty()) {
       return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
     }
+    
     const type = req.params.type;
     const number = req.body.number;
     const userEmail = req.user.email
@@ -312,7 +345,7 @@ app.patch('/api/plane/:type/addReservationByNumber/', isLoggedIn, [check('type')
   }
 })
 
-// 5. Delete a reservation, by providing all the relevant information
+// 6. Delete a reservation, by providing all the relevant information
 // PUT /api/plane/:type/deleteReservation
 // Given a plane type and the user's email, this route updates each requested seat,
 // by setting the userEmail to null.
@@ -336,7 +369,6 @@ app.patch('/api/plane/:type/deleteReservation', isLoggedIn, [check('type').isStr
     return res.status(200).json(result);
 
   }catch(err){
-    console.log(err.message)
     return res.status(500).end();
   }
 })

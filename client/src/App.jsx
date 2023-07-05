@@ -3,15 +3,23 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import './App.css';
 import { useEffect, useState } from 'react';
 import API from './API';
-import MessageContext from './messageCtx';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import {MessageContext, OccupancyContext} from './messageCtx';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Container, Toast } from 'react-bootstrap/'
 import { TopBar } from './components/TopBar'
-import { MainLayout, NotFoundLayout, LoginLayout, LoadingLayout } from './components/PageLayout'
+import { MainLayout, StatusLayout, GridLayout, NotFoundLayout, LoginLayout, LoadingLayout, InputLayout } from './components/PageLayout'
 
 function App() {
+  const [available, setAvailable] = useState(0);
+  const [occupied, setOccupied] = useState(0);
+  const [requested, setRequested] = useState(0);
+  const [total, setTotal] = useState(0);
+
   //this state is needed when some change in the plane database occurs
   const [dirty, setDirty] = useState(true);
+
+  //this state is needed when some changes in the occupancy table occurs
+  const [dirty2, setDirty2] = useState(true);
 
   //this state keeps track if the user is currently logged-in
   const [loggedIn, setLoggedIn] = useState(false);
@@ -27,6 +35,15 @@ function App() {
 
   //this state contains the error's message
   const [message, setMessage] = useState('');
+
+  //this state contains, if exists, the reservation of plane type's seats of the logged-in user.
+  const [reservation, setReservation] = useState([]);
+
+  //this state contains the colors to be displayed on the grid, according to the plane selected
+  const [seatColors, setSeatColors] = useState([]);
+
+  //this state contains the number of requested seats
+  const [numberSeats, setNumberSeats] = useState(0);
 
   const planesInfo = {
     'local': {rows: 15, seats: 4},
@@ -53,12 +70,11 @@ function App() {
         setLoading(true);
         const user = await API.getUserInfo(); //here there are the user's info {id: 1, email: 'francesco@polito.it'},
         // if already logged in, otherwise an error will be throw
-        console.log(user)
         setUser(user);
         setLoggedIn(true);
         setLoading(false);
       }catch(err){
-        handleErrors(err); //mostly unauthenticated user, thus set not logged in
+        //handleErrors(err); //mostly unauthenticated user, thus set not logged in
         setUser(null);
         setLoggedIn(false);
         setLoading(false);
@@ -74,7 +90,6 @@ function App() {
   const handleLogin = async (credentials) => {
     try{
       const user = await API.logIn(credentials);
-      console.log(user)
       setUser(user);
       setLoggedIn(true);
     }catch(err){
@@ -90,35 +105,77 @@ function App() {
     await API.logOut();
     setLoggedIn(false);
     setUser(null);
-    setPlanes([]);
+    setDirty2(true);
+  }
+
+  const addReservationByGrid = async(type, reservations) => {
+    try{
+    const result = await API.addReservationByGrid(type, reservations);
+    setDirty(true);
+    }catch(err){
+      handleErrors(err);
+    }finally{
+      setDirty2(true);
+    }
+  }
+
+  const addReservationByNumber = async(type, number) => {
+    try{
+      const result = await API.addReservationByNumber(type, {number: parseInt(number)})
+      setDirty(true)
+    }catch(err){
+      handleErrors(err)
+    }finally{
+      setDirty2(true)
+      setNumberSeats(0)
+    }
+  }
+
+  const deleteReservation = async(type) => {
+    try{
+      const result = await API.deleteReservation(type);
+      setDirty(true);
+      setDirty2(true)
+    }catch(err){
+      handleErrors(err)
+    }
   }
 
   return (
    <BrowserRouter>
       <MessageContext.Provider value={{handleErrors}}>
-        <Container fluid className='App'>
+        <OccupancyContext.Provider value={{occupied, setOccupied, available, setAvailable, requested, setRequested, total, setTotal}}>
+          <Container fluid className='App'>
 
-          <TopBar logout={handleLogout} user={user} loggedIn={loggedIn}/>
+            <TopBar logout={handleLogout} user={user} loggedIn={loggedIn} setDirty2={setDirty2} />
 
-          <Routes>
-            <Route path='/' element={<MainLayout planesInfo={planesInfo} />} />
-            {/*<Route path='plane/:type' element={loggedIn ? <StatusLayout planes={planes} setPlanes={setPlanes} loggedIn={loggedIn} setLoggedIn={setLoggedIn} /> : <Navigate replace to='/login'/>} >
-                <Route path='manual' element={loggedIn ? <GridLayout planes={planes} setPlanes={setPlanes}/> : <Navigate replace to='/login'/>} />
-                <Route path='automatic' element={loggedIn ? <InputLayout/> : <Navigate replace to='/login'/>} />
-                <Route path='*' element={<NotFoundLayout/>} />
-              </Route>*/}
-            <Route path='/login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
-            {/*
-            <Route path='/' element={loggedIn ? <h1>main page</h1>: <Navigate replace to='/login'/>}/>
-            <Route path='login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
-            */}
-          </Routes>
+            <Routes>
+              <Route path='/' element={<MainLayout planesInfo={planesInfo} dirty={dirty} setDirty={setDirty} setDirty2={setDirty2} />} />
+              <Route path='plane/:type' element={<StatusLayout planes={planes} setPlanes={setPlanes} loggedIn={loggedIn}
+                     addReservationByGrid={addReservationByGrid} reservation={reservation} setReservation={setReservation}
+                     dirty2={dirty2} setDirty2={setDirty2} deleteReservation={deleteReservation} numberSeats={numberSeats}
+                     setNumberSeats={setNumberSeats} addReservationByNumber={addReservationByNumber} />} >
+                  <Route index element={<GridLayout loggedIn ={loggedIn} planes={planes} setPlanes={setPlanes} dirty={dirty} setDirty={setDirty}
+                          reservation={reservation} setReservation={setReservation} seatColors={seatColors} setSeatColors={setSeatColors}
+                          dirty2={dirty2} setDirty2={setDirty2} />} />
+                  <Route path='automatic' element={loggedIn ? 
+                  <InputLayout addReservationByNumber={addReservationByNumber} 
+                    numberSeats={numberSeats} setNumberSeats={setNumberSeats} /> : <Navigate replace to='/login'/>} />
+                  <Route path='*' element={<NotFoundLayout/>} />
+              </Route>
+              <Route path='/login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
+              {/*
+              <Route path='/' element={loggedIn ? <h1>main page</h1>: <Navigate replace to='/login'/>}/>
+              <Route path='login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
+              */}
+            </Routes>
 
-          <Toast show={message !== ''} onClose={() => setMessage('')} delay={4000} autohide bg="danger">
-            <Toast.Body>{message}</Toast.Body>
-          </Toast>
+            <Toast show={message !== ''} onClose={() => setMessage('')} delay={5000} autohide bg="danger">
+              <Toast.Body>{message}</Toast.Body>
+            </Toast>
 
-        </Container>
+          </Container>
+        </OccupancyContext.Provider>
       </MessageContext.Provider>
    </BrowserRouter>
   )

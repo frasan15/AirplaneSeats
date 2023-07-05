@@ -1,5 +1,6 @@
 import React from 'react';
 
 const MessageContext = React.createContext();
+const OccupancyContext = React.createContext();
 
-export default MessageContext;
+export {MessageContext, OccupancyContext};

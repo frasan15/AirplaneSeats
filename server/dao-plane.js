@@ -21,6 +21,32 @@ exports.listSeats = (type) => {
     })
 };
 
+//this function returns the number of occupied seats of a specific plane type
+exports.getOccupied = (type) => {
+    return new Promise((resolve, reject) => {
+        const sql = 'SELECT COUNT(*) as occupied FROM plane WHERE type=? AND userEmail IS NOT NULL'
+        db.get(sql, [type], (err, row) => {
+            if(err){
+                reject(err);
+            }
+            resolve(row.occupied);
+        })
+    })
+}
+
+//this function returns the number of available seats of a specific plane type
+exports.getAvailable = (type) => {
+    return new Promise((resolve, reject) => {
+        const sql = 'SELECT COUNT(*) as available FROM plane WHERE type=? AND userEmail IS NULL'
+        db.get(sql, [type], (err, row) => {
+            if(err){
+                reject(err);
+            }
+            resolve(row.available);
+        })
+    })
+}
+
 //this functions returns the reservation performed by the specified user on the specified plane
 exports.listSeatsByUser = (userEmail, type) => {
     return new Promise((resolve, reject) => {
@@ -29,9 +55,11 @@ exports.listSeatsByUser = (userEmail, type) => {
             if(err){
                 reject(err);
             }
+            /*
             if(rows.length === 0){
                 resolve([{error: "No reservations found with the specified user's email on the specified plane type"}]);
             }
+            */
         resolve(rows);
         })
     })
@@ -98,8 +126,9 @@ exports.getSeatByTriplet = (row, seat, type) => {
             }
             if(row === undefined){
                 resolve({error: "seat not found"});
-            }
+            }else{
             resolve(row.rowId);
+            }
         })
     })
 };
@@ -126,7 +155,7 @@ exports.getFirstFreeSeats = (type, number) => {
                 }
                 resolve(result);
             }else{
-                resolve([{error: "there are not enough seats to perform the requested reservation or plane type not found"}])
+                resolve([{error: "there are not enough seats to perform the requested reservation"}])
             }
         })
     })
@@ -166,7 +195,7 @@ exports.deleteReservation = (userEmail, type) => {//ho tolto rowId e aggiunto ty
                 reject(err);
             }
             if(this.changes === 0){
-                resolve({error: "Plane type not found or reservations not found"});
+                resolve({error: "Reservation not found"});
             }else{
                 resolve({});
             }

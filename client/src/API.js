@@ -38,17 +38,24 @@ function getJson(httpResponsePromise) {
   }
 
   /**
+   * Getting the availability of the specified plane type
+   */
+  const getAvailability = async(type) => {
+    return getJson(fetch(SERVER_URL + 'plane/' + type + '/getAvailability', {credentials: 'include'}))
+  }
+
+  /**
    * Get the reservation of the specified user on the specified plane type
    */
   const getReservationsByType = async(type) => {
-    return getJson(fetch(SERVER_URL + 'plane/' + type + 'getReservations', {credentials: 'include'}))
+    return getJson(fetch(SERVER_URL + 'plane/' + type + '/getReservations', {credentials: 'include'}))
   }
 
   /**
    * This function adds a reservation on the specified plane type, passing the reservations' array
    */
   const addReservationByGrid = async(type, reservations) => {
-    return getJson(fetch(SERVER_URL + 'plane/' + type + 'addReservationByGrid', {
+    return getJson(fetch(SERVER_URL + 'plane/' + type + '/addReservationByGrid', {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json'
@@ -62,7 +69,7 @@ function getJson(httpResponsePromise) {
    * This function adds a reservation on the specified plane type, passing the number of the requested seats
    */
   const addReservationByNumber = async(type, number) => {
-    return getJson(fetch(SERVER_URL + 'plane/' + type + 'addReservationByNumber', {
+    return getJson(fetch(SERVER_URL + 'plane/' + type + '/addReservationByNumber', {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json'
@@ -76,7 +83,7 @@ function getJson(httpResponsePromise) {
    * This function deletes a reservation on the specified plane type referred to the logged-in user
    */
   const deleteReservation = async(type) => {
-    return getJson(fetch(SERVER_URL + 'plane/' + type + 'deleteReservation', {
+    return getJson(fetch(SERVER_URL + 'plane/' + type + '/deleteReservation', {
         method: 'PATCH',
         credentials: 'include'
     }))
@@ -120,5 +127,5 @@ const getUserInfo = async () => {
     )
   }
   
-  const API = {logIn, getUserInfo, logOut, getSeatsByType, getReservationsByType, addReservationByGrid, addReservationByNumber, deleteReservation};
+  const API = {logIn, getUserInfo, logOut, getSeatsByType, getAvailability, getReservationsByType, addReservationByGrid, addReservationByNumber, deleteReservation};
   export default API;
