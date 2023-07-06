@@ -4,8 +4,20 @@
 
 const db = require('./db');
 
-//this functions retrieves the whole list of seats of the selected plane type
+//this function retrieves information about all planes
+exports.getPlanesInfo = () => {
+    return new Promise((resolve, reject) => {
+        const sql = 'SELECT * FROM planeInfo'
+        db.all(sql, [], (err, rows) => {
+            if(err){
+                reject(err);
+            }
+            resolve(rows);
+        })
+    })
+}
 
+//this function retrieves the whole list of seats of the selected plane type
 exports.listSeats = (type) => {
     return new Promise((resolve, reject) => {
         const sql = 'SELECT * FROM plane WHERE type=?';
@@ -109,7 +121,7 @@ exports.hasAlreadyReservations = (userEmail, type) => {
                 reject(err);
             }
             if(rows.length > 0){
-                resolve({error: `the specified user already owns reservations on the plane type: ${type}`});
+                resolve({error: `the user already owns a reservation on ${type} plane`});
             }
             resolve({});
         })

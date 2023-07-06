@@ -9,25 +9,33 @@ import {Grid} from './Grid'
 import { Buttons } from './Buttons';
 
 function MainLayout(props) {
-  const planesInfo1 = props.planesInfo;
-  const planesInfo = Object.entries(planesInfo1);
-  let path = `plane/${"local"}`
+  const planesInfo = props.planesInfo;
+  let index = 4;
+  let path = ``
   return(
     <>
-      <Row className='below-nav'> <h1 className='justify-content-center'> Select your plane </h1> </Row>
+      <Row className='below-nav justify-content-center align-items-center'> 
+        <Col className='text-center'>
+          <h1 className='custom-heading'> Select a plane </h1>
+        </Col> 
+      </Row>
         <Row className='w-100 d-flex justify-content-between' >
-          {planesInfo.map(([planeType, {}]) => {
-          {path = `plane/${planeType}`}
+          {planesInfo.map((plane) => {
+            index--;
+            let displayClass = `display-${index}`
+          {path = `plane/${plane.type}`}
           return(
-            <Col key={planeType} lg={4} className="below-nav">
+            <Col key={plane.type} lg={4} className="below-nav">
               <Link to={path} onClick={() => {
                 props.setDirty(true);
                 props.setDirty2(true)
                 }}> 
               {/* everytime I select a new plane, a new API call must be performed, to get the desidered plane seats */}
-                <div className="text-center square-wrapper">
-                  <h4>{planeType}</h4>
+                <div className="text-center square-wrapper airplane-fixed-size">
+                  <h4>{plane.type}</h4>
+                  <div className={displayClass}>
                   <i className="bi bi-airplane-engines-fill"></i>
+                  </div>
                 </div>
               </Link>
             </Col>
@@ -45,8 +53,11 @@ function StatusLayout(props) {
   const {handleErrors} = useContext(MessageContext);
   const dirty2 = props.dirty2
   const setDirty2 = props.setDirty2
-  //the following API must be inside a useEffect, it is needed when we are in logged-in mode, so everytime the user
-  //clicks on the grid, this API must be re-call.
+  
+  //whenever a user changes plane its availability must be updated; setting also the requested number seats to 0 
+  //for cleaning, and reservation state to an empty array: this is needed because if the user is clicking on some
+  //seats and at a certain point he performs log-out, the reservation array must be resetted; this is why the dirty2
+  //state becomes true after the log-out (see handleLogout in App.jsx) 
   useEffect(() => 
     {
       if(dirty2){    
@@ -56,9 +67,10 @@ function StatusLayout(props) {
             setOccupied(result.occupied);
             setTotal(result.total);
             setRequested(0);
+            props.setReservation([]);
           })
           .catch(err => {
-            //handleErrors(err);
+            handleErrors(err);
           }); 
           setDirty2(false)
       }
@@ -74,29 +86,23 @@ function StatusLayout(props) {
       <Row className="vh-100">
         <Col xl={3} bg='light' className='below-nav'>
           <Table striped bordered>
-            <thead>
-              <tr>
-                <th>Occupancy</th>
-                <th>Value</th>
-              </tr>
-            </thead>
             <tbody>
               <tr>
-                <td>Occupied</td>
+                <td className='custom-table-entry'>Occupied seats</td>
                 <td>{occupied}</td>
               </tr>
               <tr>
-                <td>Available</td>
+                <td className='custom-table-entry'>Available seats</td>
                 <td>{available}</td>
               </tr>
               {props.loggedIn && (
                 <tr>
-                  <td>Requested</td>
+                  <td className='custom-table-entry'>Requested seats</td>
                   <td>{requested}</td>
                 </tr>
               )}
               <tr>
-                <td>Total</td>
+                <td className='custom-table-entry'>Total seats</td>
                 <td>{total}</td>
               </tr>
             </tbody>
@@ -109,7 +115,7 @@ function StatusLayout(props) {
         <Row>
             <Buttons loggedIn={props.loggedIn} addReservationByGrid={props.addReservationByGrid}
               reservation={props.reservation} setReservation={props.setReservation} setDirty2={setDirty2}
-              deleteReservation={props.deleteReservation} numberSeats={props.numberSeats} 
+              deleteReservation={props.deleteReservation} numberSeats={props.numberSeats} setDirty={props.setDirty}
               setNumberSeats={props.setNumberSeats} addReservationByNumber={props.addReservationByNumber} /> 
           </Row>
         </Col>
@@ -129,13 +135,14 @@ function GridLayout(props){
 
   //setDirty(true)
   useEffect(() => {
+    
   API.getSeatsByType(type)
     .then(seats => {
       setPlanes(seats);
       setRequested(0);
       setDirty(false);
     }).catch(err => {
-      //handleErrors(err)
+      handleErrors(err)
       setDirty(false)
     })
 /*
@@ -158,7 +165,10 @@ function GridLayout(props){
         </Button>
         : <Grid planes={planes} setPlanes={setPlanes} loggedIn={loggedIn} dirty={dirty} setDirty={setDirty}
             reservation={props.reservation} setReservation={props.setReservation} seatColors={props.seatColors}
-            setSeatColors={props.setSeatColors} dirty2={props.dirty2} setDirty2={props.setDirty2} />
+            setSeatColors={props.setSeatColors} dirty2={props.dirty2} setDirty2={props.setDirty2}
+            highlighted={props.highlighted} setHighlighted={props.setHighlighted} reservationConflict={props.reservationConflict}
+            setReservationConflict={props.setReservationConflict}
+            planesInfo={props.planesInfo} />
         
       }
     </> 
@@ -187,7 +197,7 @@ function InputLayout(props) {
 function NotFoundLayout() {
     return(
         <>
-          <h2>This is not the route you are looking for!</h2>
+          <h2 className="below-nav">This is not the route you are looking for!</h2>
           <Link to="/">
             <Button variant="primary">Go Home!</Button>
           </Link>

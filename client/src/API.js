@@ -31,6 +31,13 @@ function getJson(httpResponsePromise) {
   }
 
   /**
+   * Getting planes' information about type, number of row and number of seats
+   */
+  const getPlanesInfo = async() => {
+    return getJson(fetch(SERVER_URL + 'plane', {credentials: 'include'}));
+  }
+
+  /**
    * Getting from the server side and the returning the whole list of seats of the specified plane
    */
   const getSeatsByType = async(type) => {
@@ -127,5 +134,5 @@ const getUserInfo = async () => {
     )
   }
   
-  const API = {logIn, getUserInfo, logOut, getSeatsByType, getAvailability, getReservationsByType, addReservationByGrid, addReservationByNumber, deleteReservation};
+  const API = {logIn, getUserInfo, logOut, getPlanesInfo, getSeatsByType, getAvailability, getReservationsByType, addReservationByGrid, addReservationByNumber, deleteReservation};
   export default API;

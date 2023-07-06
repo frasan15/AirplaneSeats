@@ -25,7 +25,11 @@ function Buttons(props) {
       loggedIn ? 
       <>
         <Row>
-          <Link className='mb-3 custom-button text-center square-wrapper' to={selectionType === 'manual' ? urlAutomatic : urlManual}>
+          <Link className='mb-3 custom-button text-center square-wrapper' to={selectionType === 'manual' ? urlAutomatic : urlManual}
+          onClick={() => {
+            props.setDirty2(true);
+            props.setDirty(true)
+            }}>
             {selectionType === 'manual' ? "Go to input box": "Go to grid selection"}
           </Link>
         </Row>

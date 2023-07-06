@@ -22,9 +22,10 @@ const TopBar = (props) => {
                 </Link>
                 </Navbar.Collapse>
                 <Nav className="ml-md-auto">
+                    {/*
                     <Navbar.Text className="mx-2">
                         {props.user && props.user.name && `Welcome, ${props.user.name}!`}
-                    </Navbar.Text>
+    </Navbar.Text>*/}
                     <Form className="mx-2">
                         {props.loggedIn ? <LogoutButton logout={props.logout} /> : <LoginButton />}
                     </Form>

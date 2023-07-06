@@ -162,3 +162,20 @@ small.watch-date {
   cursor: pointer;
   font-weight: bold;
 }
+
+.airplane-fixed-size {
+  width: 10em;
+}
+
+.custom-heading {
+  font-size: 48px;
+  color: #333;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.custom-table-entry {
+  font-size: 20px;
+  color: #333;
+  font-weight: bold;
+}

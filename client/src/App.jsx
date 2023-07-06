@@ -15,6 +15,9 @@ function App() {
   const [requested, setRequested] = useState(0);
   const [total, setTotal] = useState(0);
 
+  //this state contains the info about all plane: type, number of rows, number of seats
+  const [planesInfo, setPlanesInfo] = useState([]);
+
   //this state is needed when some change in the plane database occurs
   const [dirty, setDirty] = useState(true);
 
@@ -45,11 +48,11 @@ function App() {
   //this state contains the number of requested seats
   const [numberSeats, setNumberSeats] = useState(0);
 
-  const planesInfo = {
-    'local': {rows: 15, seats: 4},
-    'regional': {rows: 20, seats: 5},
-    'international': {rows: 25, seats: 6}
-  };
+  //this state contains all the seats that cause the conflict, it is needed in order to highlight them after the conflict
+  const [reservationConflict, setReservationConflict] = useState([]);
+
+  //this state is true when a conflict occurs, and the target seats are highlighted, it turned off after 5 seconds
+  const [highlighted, setHighlighted] = useState(false);
 
   //If an error occurs, the error message will be shown in a toast
   const handleErrors = (err) => {
@@ -74,7 +77,6 @@ function App() {
         setLoggedIn(true);
         setLoading(false);
       }catch(err){
-        //handleErrors(err); //mostly unauthenticated user, thus set not logged in
         setUser(null);
         setLoggedIn(false);
         setLoading(false);
@@ -82,6 +84,22 @@ function App() {
     }
     init();
   }, []); //this useEffect is called only the first time the component is mounted
+
+  //this effect retrieves planes information
+  useEffect(() => {
+    const initPlanesInfo = async () => {
+      try{
+        setLoading(true);
+        const info = await API.getPlanesInfo();
+        setPlanesInfo(info);
+        setLoading(false)
+      }catch(err){
+        handleErrors(err)
+        setLoading(false);
+      }
+    }
+    initPlanesInfo();
+  }, [])
 
     /**
    * This function handles the login process.
@@ -102,19 +120,28 @@ function App() {
    * This function handles the logout process
    */
   const handleLogout = async () => {
-    await API.logOut();
-    setLoggedIn(false);
-    setUser(null);
-    setDirty2(true);
+    try{
+      await API.logOut();
+      setLoggedIn(false);
+      setUser(null);
+      setDirty2(true);
+    }catch(err){
+      handleErrors(err);
+    }
   }
 
   const addReservationByGrid = async(type, reservations) => {
     try{
     const result = await API.addReservationByGrid(type, reservations);
-    setDirty(true);
+    if(result.message){
+      setHighlighted(true);
+      setReservationConflict(result.occupiedSeats)
+      setMessage(result.message)
+    }
     }catch(err){
       handleErrors(err);
     }finally{
+      setDirty(true);
       setDirty2(true);
     }
   }
@@ -134,10 +161,11 @@ function App() {
   const deleteReservation = async(type) => {
     try{
       const result = await API.deleteReservation(type);
-      setDirty(true);
-      setDirty2(true)
     }catch(err){
       handleErrors(err)
+    }finally{
+      setDirty(true);
+      setDirty2(true)
     }
   }
 
@@ -150,24 +178,26 @@ function App() {
             <TopBar logout={handleLogout} user={user} loggedIn={loggedIn} setDirty2={setDirty2} />
 
             <Routes>
-              <Route path='/' element={<MainLayout planesInfo={planesInfo} dirty={dirty} setDirty={setDirty} setDirty2={setDirty2} />} />
+              <Route path='/' element={loading ? <LoadingLayout/> :
+              <MainLayout planesInfo={planesInfo} dirty={dirty} setDirty={setDirty} setDirty2={setDirty2} />} />
               <Route path='plane/:type' element={<StatusLayout planes={planes} setPlanes={setPlanes} loggedIn={loggedIn}
                      addReservationByGrid={addReservationByGrid} reservation={reservation} setReservation={setReservation}
                      dirty2={dirty2} setDirty2={setDirty2} deleteReservation={deleteReservation} numberSeats={numberSeats}
-                     setNumberSeats={setNumberSeats} addReservationByNumber={addReservationByNumber} />} >
+                     setNumberSeats={setNumberSeats} addReservationByNumber={addReservationByNumber}
+                     setDirty={setDirty} />} >
                   <Route index element={<GridLayout loggedIn ={loggedIn} planes={planes} setPlanes={setPlanes} dirty={dirty} setDirty={setDirty}
                           reservation={reservation} setReservation={setReservation} seatColors={seatColors} setSeatColors={setSeatColors}
-                          dirty2={dirty2} setDirty2={setDirty2} />} />
+                          dirty2={dirty2} setDirty2={setDirty2} highlighted={highlighted} setHighlighted={setHighlighted}
+                          reservationConflict={reservationConflict} setReservationConflict={setReservationConflict}
+                          planesInfo={planesInfo} />} />
                   <Route path='automatic' element={loggedIn ? 
                   <InputLayout addReservationByNumber={addReservationByNumber} 
-                    numberSeats={numberSeats} setNumberSeats={setNumberSeats} /> : <Navigate replace to='/login'/>} />
+                    numberSeats={numberSeats} setNumberSeats={setNumberSeats} /> 
+                    : <Navigate replace to='/login'/>} />
                   <Route path='*' element={<NotFoundLayout/>} />
               </Route>
               <Route path='/login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
-              {/*
-              <Route path='/' element={loggedIn ? <h1>main page</h1>: <Navigate replace to='/login'/>}/>
-              <Route path='login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
-              */}
+              <Route path='*' element={<NotFoundLayout/>} />
             </Routes>
 
             <Toast show={message !== ''} onClose={() => setMessage('')} delay={5000} autohide bg="danger">

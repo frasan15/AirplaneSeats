@@ -142,7 +142,26 @@ app.delete('/api/sessions/current', (req, res) => {
 });
 
 /*** Plane APIs ***/
-// 1. Retrieve the list of all the seats belonging to the specified plane type
+
+// 1. Retrieve information about all planes: type, number of rows and number of seats
+// GET /api/plane
+app.get('/api/plane', async(req, res) => {
+  try{
+    // Is there any validation error?
+    const errors = validationResult(req).formatWith(errorFormatter); // format error message
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ error: errors.array().join(", ") }); // error message is a single string with all error joined together
+    }
+
+    const planesInfo = await planeDao.getPlanesInfo();
+
+    return res.status(200).json(planesInfo);
+  }catch(err){
+    return res.status(500).json({err})
+  }
+})
+
+// 2. Retrieve the list of all the seats belonging to the specified plane type
 // GET /api/plane/:type
 // Given a plane type, this route returns the associated set of seats. 
 app.get('/api/plane/:type', /*isLoggedIn,*/ [check('type').isString()], async (req, res) => {
@@ -161,11 +180,11 @@ app.get('/api/plane/:type', /*isLoggedIn,*/ [check('type').isString()], async (r
 
     return res.status(200).json(seats);
   }catch (err){
-    return res.status(500).end();
+    return res.status(500).json({err})
   }
 })
 
-// 2. Retrieve the availability of the specified plane type's seats
+// 3. Retrieve the availability of the specified plane type's seats
 // GET /api/plane/:type/getAvailability
 // Given a plane type, this route returns its own availability by specifying the number of occupied seats,
 // the number of available seats, and the total. 
@@ -188,11 +207,11 @@ app.get('/api/plane/:type/getAvailability', /*isLoggedIn,*/ [check('type').isStr
     return res.status(200).json(result);
 
   }catch (err){
-    return res.status(500).end();
+    return res.status(500).json({err})
   }
 })
 
-// 3. Get the reservation made by a specific user, by providing all the relevant information
+// 4. Get the reservation made by a specific user, by providing all the relevant information
 // GET /api/plane/:type/getReservations
 // Given a plane type and a user's email, this route returns reservation on the specified plane
 // performed by the specified user, where a reservation is represented by a row in the plane table
@@ -228,11 +247,11 @@ async(req, res) => {
 
     return res.status(200).json(result);
   }catch (err){
-    return res.status(500).end();
+    return res.status(500).json({err})
   }
 })
 
-// 4. Create a reservation, by providing all the relevant information, through an array of reservations
+// 5. Create a reservation, by providing all the relevant information, through an array of reservations
 // PUT /api/plane/:type/addReservationByGrid
 // Given a plane type and the list of the reservations to be performed, this route updates each requested seat,
 // by setting the userEmail value with the one of the user who is trying to perform the reservation.
@@ -267,13 +286,13 @@ app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').is
       const rowId = await planeDao.getSeatByTriplet(reservation.row, reservation.seat, type);
       isOccupied = await planeDao.isOccupied(rowId);
       if (isOccupied) {
-        occupiedSeats.push({ row: reservation.row, seat: reservation.seat });
+        occupiedSeats.push({ rowId: rowId, row: reservation.row, seat: reservation.seat });
       }
     }
 
     if(occupiedSeats.length > 0){
       //the following array will contain all the seats which caused the failure
-      return res.status(207).json({message: "the requested seats are already occupied", occupiedSeats: occupiedSeats});
+      return res.status(207).json({message: "the seats highlighted in red are already occupied", occupiedSeats: occupiedSeats});
     }
 
     for (const reservation of reservations) {
@@ -289,11 +308,11 @@ app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').is
     return res.status(200).json(result);
 
   }catch(err){
-    return res.status(500).end();
+    return res.status(500).json({err})
   }
 });
 
-// 5. Create a reservation, by providing all the relevant information, through the number of the needed seats
+// 6. Create a reservation, by providing all the relevant information, through the number of the needed seats
 // PUT /api/plane/:type/addReservationByNumber
 // Given a plane type and the number of the requested seats, this route updates each requested seat,
 // by setting the userEmail value with the one of the user who is trying to perform the reservation.
@@ -301,7 +320,7 @@ app.patch('/api/plane/:type/addReservationByGrid', isLoggedIn, [check('type').is
 // and the number of the requested seats is passed through the request body: 
 // {number: 5}
 app.patch('/api/plane/:type/addReservationByNumber', isLoggedIn, [check('type').isString()], async(req, res) => {
-  try{console.log(req)
+  try{
     // Is there any validation error?
     const errors = validationResult(req).formatWith(errorFormatter); // format error message
     if (!errors.isEmpty()) {
@@ -341,11 +360,11 @@ app.patch('/api/plane/:type/addReservationByNumber', isLoggedIn, [check('type').
 
 
   }catch(err){
-    return res.status(500).end();
+    return res.status(500).json({err})
   }
 })
 
-// 6. Delete a reservation, by providing all the relevant information
+// 7. Delete a reservation, by providing all the relevant information
 // PUT /api/plane/:type/deleteReservation
 // Given a plane type and the user's email, this route updates each requested seat,
 // by setting the userEmail to null.
@@ -369,7 +388,7 @@ app.patch('/api/plane/:type/deleteReservation', isLoggedIn, [check('type').isStr
     return res.status(200).json(result);
 
   }catch(err){
-    return res.status(500).end();
+    return res.status(500).json({err})
   }
 })
 
