@@ -59,24 +59,6 @@ exports.getAvailable = (type) => {
     })
 }
 
-//this functions returns the reservation performed by the specified user on the specified plane
-exports.listSeatsByUser = (userEmail, type) => {
-    return new Promise((resolve, reject) => {
-        const sql = 'SELECT * FROM plane WHERE userEmail=? AND type=?';
-        db.all(sql, [userEmail, type], (err, rows) => {
-            if(err){
-                reject(err);
-            }
-            /*
-            if(rows.length === 0){
-                resolve([{error: "No reservations found with the specified user's email on the specified plane type"}]);
-            }
-            */
-        resolve(rows);
-        })
-    })
-}
-
 //this functions is useful to check if the specified seat is still available.
 //it returns true if the seat is occupied, false otherwise.
 exports.isOccupied = (rowId) => {
@@ -121,7 +103,7 @@ exports.hasAlreadyReservations = (userEmail, type) => {
                 reject(err);
             }
             if(rows.length > 0){
-                resolve({error: `the user already owns a reservation on ${type} plane`});
+                resolve({error: `the user already owns a reservation on the ${type} plane`});
             }
             resolve({});
         })

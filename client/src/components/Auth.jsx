@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Form, Button, Alert, Col, Row } from 'react-bootstrap';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function LoginForm(props) {
     const [username, setUsername] = useState('');
@@ -10,7 +10,6 @@ function LoginForm(props) {
     const [show, setShow] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
-    const location = useLocation();
     const navigate = useNavigate();
 
     const handleSubmit = (event) => {
@@ -42,7 +41,7 @@ function LoginForm(props) {
                 <Form.Label>email</Form.Label>
                 <Form.Control
                   type="email"
-                  value={username} placeholder="Example: john.doe@polito.it"
+                  value={username} placeholder="Example: francesco@polito.it"
                   onChange={(ev) => setUsername(ev.target.value)}
                   required={true}
                 />

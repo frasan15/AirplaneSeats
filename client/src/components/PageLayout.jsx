@@ -1,10 +1,9 @@
-import { React, useContext, useState, useEffect } from 'react';
+import { React, useContext, useEffect } from 'react';
 import { Row, Col, Button, Table, Spinner, Form, FormControl, FormGroup, FormLabel } from 'react-bootstrap';
-import { Link, useParams, useLocation, Outlet } from 'react-router-dom';
-import {MessageContext, OccupancyContext} from '../messageCtx';
+import { Link, useParams, Outlet } from 'react-router-dom';
+import {MessageContext, OccupancyContext, ReservationContext} from '../messageCtx';
 import API from '../API';
 import { LoginForm } from './Auth';
-import Stack from 'react-bootstrap/Stack';
 import {Grid} from './Grid'
 import { Buttons } from './Buttons';
 
@@ -48,6 +47,7 @@ function MainLayout(props) {
 }
 
 function StatusLayout(props) {
+  const { setReservation } = useContext(ReservationContext);
   const {type} = useParams();
   const { occupied, setOccupied, available, setAvailable, requested, setRequested, total, setTotal } = useContext(OccupancyContext);
   const {handleErrors} = useContext(MessageContext);
@@ -67,7 +67,7 @@ function StatusLayout(props) {
             setOccupied(result.occupied);
             setTotal(result.total);
             setRequested(0);
-            props.setReservation([]);
+            setReservation([]);
           })
           .catch(err => {
             handleErrors(err);
@@ -113,10 +113,7 @@ function StatusLayout(props) {
         </Col>
         <Col xl={3} className='below-nav' >
         <Row>
-            <Buttons loggedIn={props.loggedIn} addReservationByGrid={props.addReservationByGrid}
-              reservation={props.reservation} setReservation={props.setReservation} setDirty2={setDirty2}
-              deleteReservation={props.deleteReservation} numberSeats={props.numberSeats} setDirty={props.setDirty}
-              setNumberSeats={props.setNumberSeats} addReservationByNumber={props.addReservationByNumber} /> 
+            <Buttons loggedIn={props.loggedIn} setDirty2={setDirty2} setDirty={props.setDirty}/> 
           </Row>
         </Col>
       </Row>
@@ -124,34 +121,25 @@ function StatusLayout(props) {
 }
 
 function GridLayout(props){
+  const { planes, setPlanes } = useContext(ReservationContext)
   const dirty = props.dirty;
   const setDirty = props.setDirty;
-  const planes = props.planes;
-  const setPlanes = props.setPlanes;
   const {handleErrors} = useContext(MessageContext);
   const {setRequested} = useContext(OccupancyContext)
   const {type} = useParams();
   const loggedIn = props.loggedIn;
 
-  //setDirty(true)
+  //this useEffect updates the grid of seats based on the requested plane and set the number of requested seats to 0
   useEffect(() => {
-    
-  API.getSeatsByType(type)
-    .then(seats => {
-      setPlanes(seats);
-      setRequested(0);
-      setDirty(false);
-    }).catch(err => {
-      handleErrors(err)
-      setDirty(false)
-    })
-/*
-  API.getReservationsByType(type)
-    .then(result => {
-      setReservation(result);
-    }).catch(err => {
-      //handleErrors(err)
-    })*/
+    API.getSeatsByType(type)
+      .then(seats => {
+        setPlanes(seats);
+        setRequested(0);
+        setDirty(false);
+      }).catch(err => {
+        handleErrors(err)
+        setDirty(false)
+      })
   }, [dirty]
   )
 
@@ -164,30 +152,24 @@ function GridLayout(props){
         Loading... 
         </Button>
         : <Grid planes={planes} setPlanes={setPlanes} loggedIn={loggedIn} dirty={dirty} setDirty={setDirty}
-            reservation={props.reservation} setReservation={props.setReservation} seatColors={props.seatColors}
-            setSeatColors={props.setSeatColors} dirty2={props.dirty2} setDirty2={props.setDirty2}
-            highlighted={props.highlighted} setHighlighted={props.setHighlighted} reservationConflict={props.reservationConflict}
-            setReservationConflict={props.setReservationConflict}
-            planesInfo={props.planesInfo} />
-        
+            dirty2={props.dirty2} setDirty2={props.setDirty2} planesInfo={props.planesInfo} />
       }
     </> 
   )
 }
 
 function InputLayout(props) {
-  const numberSeats = props.numberSeats;
-  const setNumberSeats = props.setNumberSeats
+  const { numberSeats, setNumberSeats, addReservationByNumber } = useContext(ReservationContext);
   const {type} = useParams()
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    props.addReservationByNumber(type, numberSeats);
+    addReservationByNumber(type, numberSeats);
   }
   return(
     <Form className="block-example border border-primary rounded mb-0 form-padding" onSubmit={handleSubmit} >
       <FormGroup>
-        <FormLabel>Insert the desired seat numbers</FormLabel>
+        <FormLabel className='input-box'>Enter the number of seats you would like</FormLabel>
         <FormControl value={numberSeats>0 ? numberSeats : ""} type="number" required={true} onChange={event => setNumberSeats(event.target.value)} />
       </FormGroup>
     </Form>
@@ -231,39 +213,3 @@ function LoginLayout(props) {
 }
 
 export {MainLayout, StatusLayout, GridLayout, InputLayout, NotFoundLayout, LoadingLayout, LoginLayout}
-
-
-    /*
-    <>
-      <Row className='below-nav'> <h1 className='justify-content-center'> Select your plane </h1> </Row>
-        <Row className='w-100 d-flex justify-content-between'>
-          <Col lg={4} className="below-nav">
-            <Link to={path}>
-              <div className="text-center square-wrapper">
-                <h4>Local</h4>
-                <i className="bi bi-airplane-engines-fill"></i>
-              </div>
-              </Link>
-          </Col>
-          <Col lg={4} className="below-nav">
-            <Link to=''>
-              <div className="text-center square-wrapper">
-                <h4>Regional</h4>
-                <i className="bi bi-airplane-engines-fill"></i>
-              </div>
-            </Link>
-          </Col>
-          <Col lg={4} className="below-nav">
-            <div className="text-center square-wrapper">
-              <h4>International</h4>
-              <i className="bi bi-airplane-engines-fill"></i>
-            </div>
-          </Col>
-        </Row>
-    </>
-    */
-
-
-
-
-    /*<Grid planes={planes} setPlanes={setPlanes} loggedIn={loggedIn}/>*/

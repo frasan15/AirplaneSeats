@@ -1,29 +1,23 @@
 import React, { useEffect, useContext, useState } from 'react';
 import { Table, Button, Spinner } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
-import { OccupancyContext } from '../messageCtx';
+import { OccupancyContext, ReservationContext } from '../messageCtx';
 
 function Grid (props) {
-  const reservation = props.reservation
-  const setReservation = props.setReservation
-  const planes = props.planes;
+  const { reservation, setReservation, planes, seatColors, setSeatColors, reservationConflict, setReservationConflict,
+          highlighted, setHighlighted, } = useContext(ReservationContext);
+  const { setAvailable, setRequested } = useContext(OccupancyContext);
   const {type} = useParams();
   const loggedIn = props.loggedIn
   const dirty = props.dirty;
   const setDirty = props.setDirty;
 
-  //this state is true whenever a seat is clicked, it turned false when the grid view has been updated with the
+  //this state is true whenever a seat is clicked, it turns false when the grid view is updated with the
   //requested or no-longer-requested seats.
   const [dirty1, setDirty1] = useState(true)
 
   //this state contains, if a seat has been clicked, the related seat information
   const [clickedSeat, setClickedSeat] = useState({});
-
-  const seatColors = props.seatColors;
-  const setSeatColors = props.setSeatColors
-  const { setAvailable, requested, setRequested } = useContext(OccupancyContext);
-  const dirty2 = props.dirty2
-  const setDirty2 = props.setDirty2
 
   //Whenever this component is mounted or the 'dirty' state turns true, the current plane seats list is 
   //checked and a new array is created, where id represents the id of the seat whereas the color represents 
@@ -34,25 +28,7 @@ function Grid (props) {
       id: plane.rowId,
       color: plane.userEmail !== null ? '#888888' : 'MediumSeaGreen'
     })))
-  //setDirty1(false)
   }, [dirty]);
-/*
-  useEffect(() => {
-    if((!loggedIn && requested > 0 ) || dirty2){
-      const updatedSeatColors = seatColors.map(s => {
-        if(s.color === '#ff9900'){
-          return {...s, color: 'MediumSeaGreen'};
-        }else{
-          return s;
-        }
-      });
-      setAvailable(oldAvailable => oldAvailable + requested)
-      setRequested(0);
-      setSeatColors(updatedSeatColors)
-      setReservation([]);
-    }
-  }, [loggedIn, dirty2])
-*/
 
   //whenever the user selects a seat there are three possible scenarios:
   //1. If the seat is occupied nothing happens and the dirty1 state turns false
@@ -91,16 +67,15 @@ function Grid (props) {
   //i.e. occupied. Furthermore the 'reservationConflict' turns on an empty array and the 'dirty' state turns true
   //to update the grid and show all the new occupied seats
   useEffect(() => {
-    if(props.reservationConflict.length > 0 && props.highlighted){
+    if(reservationConflict.length > 0 && highlighted){
       const highlightedSeats = seatColors.map((seat) => {
-        if(props.reservationConflict.some((conflict) => conflict.rowId === seat.id)){
+        if(reservationConflict.some((conflict) => conflict.rowId === seat.id)){
           return {...seat, color: 'red'}
         }
         return seat;
       })
       setSeatColors(highlightedSeats);
 
-      setDirty(true)
       const timeout = setTimeout(() => {
         const restoreSeats = highlightedSeats.map((seat) => {
           if(seat.color === 'red'){
@@ -114,8 +89,8 @@ function Grid (props) {
         });
 
         setSeatColors(restoreSeats);
-        props.setHighlighted(false);
-        props.setReservationConflict([]);
+        setHighlighted(false);
+        setReservationConflict([]);
         setDirty(true)
       }, 5000);
 
@@ -124,7 +99,7 @@ function Grid (props) {
       }
     }
 
-  }, [props.highlighted])
+  }, [highlighted])
   
   return (
     <>
@@ -134,9 +109,7 @@ function Grid (props) {
         Loading...
       </Button> :
       <div>
-        <MyTable type={type} planes={planes} seatColors={seatColors} clickedSeat={clickedSeat}
-          setClickedSeat={setClickedSeat} setDirty1={setDirty1}
-          planesInfo={props.planesInfo} />
+        <MyTable type={type} clickedSeat={clickedSeat} setClickedSeat={setClickedSeat} setDirty1={setDirty1} planesInfo={props.planesInfo} />
       </div>
       }
     </>
@@ -144,10 +117,8 @@ function Grid (props) {
 };
 
 function MyTable(props) {
-  const type = props.type
-  const planes = props.planes
-  const seatColors = props.seatColors
-  const clickedSeat = props.clickedSeat
+  const { planes, seatColors, highlighted } = useContext(ReservationContext);
+  const type = props.type;
   const setClickedSeat = props.setClickedSeat
   const setDirty1 = props.setDirty1
 
@@ -164,9 +135,12 @@ function MyTable(props) {
       const seatData = planes.find((s) => s.row === row && s.seat === seat);
       let s = seatColors.find(s => s.id === seatData.rowId)
 
+      //when a seat is clicked the dirty1 state turns true and the clickedSeat state becomes the current clicked seat
       const handleClick = () => {
-        setClickedSeat(seatData);
-        setDirty1(true)
+        if(!highlighted){
+          setClickedSeat(seatData);
+          setDirty1(true)
+        }
       };
 
       cells.push(

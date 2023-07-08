@@ -52,13 +52,6 @@ function getJson(httpResponsePromise) {
   }
 
   /**
-   * Get the reservation of the specified user on the specified plane type
-   */
-  const getReservationsByType = async(type) => {
-    return getJson(fetch(SERVER_URL + 'plane/' + type + '/getReservations', {credentials: 'include'}))
-  }
-
-  /**
    * This function adds a reservation on the specified plane type, passing the reservations' array
    */
   const addReservationByGrid = async(type, reservations) => {
@@ -134,5 +127,5 @@ const getUserInfo = async () => {
     )
   }
   
-  const API = {logIn, getUserInfo, logOut, getPlanesInfo, getSeatsByType, getAvailability, getReservationsByType, addReservationByGrid, addReservationByNumber, deleteReservation};
+  const API = {logIn, getUserInfo, logOut, getPlanesInfo, getSeatsByType, getAvailability, addReservationByGrid, addReservationByNumber, deleteReservation};
   export default API;

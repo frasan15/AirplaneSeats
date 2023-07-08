@@ -3,7 +3,7 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import './App.css';
 import { useEffect, useState } from 'react';
 import API from './API';
-import {MessageContext, OccupancyContext} from './messageCtx';
+import {MessageContext, OccupancyContext, ReservationContext} from './messageCtx';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Container, Toast } from 'react-bootstrap/'
 import { TopBar } from './components/TopBar'
@@ -15,10 +15,10 @@ function App() {
   const [requested, setRequested] = useState(0);
   const [total, setTotal] = useState(0);
 
-  //this state contains the info about all plane: type, number of rows, number of seats
+  //this state contains the info about all planes: type, number of rows, number of seats
   const [planesInfo, setPlanesInfo] = useState([]);
 
-  //this state is needed when some change in the plane database occurs
+  //this state is needed when some change related to reservations on the database occurs
   const [dirty, setDirty] = useState(true);
 
   //this state is needed when some changes in the occupancy table occurs
@@ -27,10 +27,10 @@ function App() {
   //this state keeps track if the user is currently logged-in
   const [loggedIn, setLoggedIn] = useState(false);
 
-  //this state contains the user's info
+  //this state contains the user's info (if logged-in)
   const [user, setUser] = useState(null);
 
-  //this state contains the list of plane's seats to display (it is initialized from a predefined array)
+  //this state contains the list of plane's seats to display according with the selected plane
   const [planes, setPlanes] = useState([]);
 
   //this states is needed to indicate whether we are waiting to receive the data from the database
@@ -39,7 +39,7 @@ function App() {
   //this state contains the error's message
   const [message, setMessage] = useState('');
 
-  //this state contains, if exists, the reservation of plane type's seats of the logged-in user.
+  //this state contains, if exists, the reservation of the current plane type's seats of the logged-in user.
   const [reservation, setReservation] = useState([]);
 
   //this state contains the colors to be displayed on the grid, according to the plane selected
@@ -51,7 +51,7 @@ function App() {
   //this state contains all the seats that cause the conflict, it is needed in order to highlight them after the conflict
   const [reservationConflict, setReservationConflict] = useState([]);
 
-  //this state is true when a conflict occurs, and the target seats are highlighted, it turned off after 5 seconds
+  //this state is true when a conflict occurs, and the target seats are highlighted, it turned false after 5 seconds
   const [highlighted, setHighlighted] = useState(false);
 
   //If an error occurs, the error message will be shown in a toast
@@ -67,12 +67,12 @@ function App() {
     setMessage(msg);
   }
 
+  //here there are the user's info {id: 1, email: 'francesco@polito.it'}, if already logged in
   useEffect(() => {
     const init = async () => {
       try{
         setLoading(true);
-        const user = await API.getUserInfo(); //here there are the user's info {id: 1, email: 'francesco@polito.it'},
-        // if already logged in, otherwise an error will be throw
+        const user = await API.getUserInfo();
         setUser(user);
         setLoggedIn(true);
         setLoading(false);
@@ -83,9 +83,9 @@ function App() {
       }
     }
     init();
-  }, []); //this useEffect is called only the first time the component is mounted
+  }, []);
 
-  //this effect retrieves planes information
+  //this useEffect retrieves planes information
   useEffect(() => {
     const initPlanesInfo = async () => {
       try{
@@ -130,6 +130,7 @@ function App() {
     }
   }
 
+  //this function performs a reservation after the user has clicked on the requested seats
   const addReservationByGrid = async(type, reservations) => {
     try{
     const result = await API.addReservationByGrid(type, reservations);
@@ -146,9 +147,10 @@ function App() {
     }
   }
 
+  //this function performs a reservation after the user has inserted the desidered number seats
   const addReservationByNumber = async(type, number) => {
     try{
-      const result = await API.addReservationByNumber(type, {number: parseInt(number)})
+      await API.addReservationByNumber(type, {number: parseInt(number)})
       setDirty(true)
     }catch(err){
       handleErrors(err)
@@ -158,9 +160,12 @@ function App() {
     }
   }
 
+  //this function cancels a reservation if exists, returns an error otherwise
+  //dirty and dirty2 are also called in case of error because if in the meantime another user books some seats
+  //or cancel its reservation, the grid and the occupancy are updated
   const deleteReservation = async(type) => {
     try{
-      const result = await API.deleteReservation(type);
+      await API.deleteReservation(type);
     }catch(err){
       handleErrors(err)
     }finally{
@@ -173,38 +178,40 @@ function App() {
    <BrowserRouter>
       <MessageContext.Provider value={{handleErrors}}>
         <OccupancyContext.Provider value={{occupied, setOccupied, available, setAvailable, requested, setRequested, total, setTotal}}>
-          <Container fluid className='App'>
+          <ReservationContext.Provider value={{
+            planes, setPlanes, reservation, setReservation, numberSeats, setNumberSeats, addReservationByNumber,
+            addReservationByGrid, deleteReservation, seatColors, setSeatColors, highlighted, setHighlighted, reservationConflict,
+            setReservationConflict,
+          }}>
+            <Container fluid className='App'>
 
-            <TopBar logout={handleLogout} user={user} loggedIn={loggedIn} setDirty2={setDirty2} />
+              <TopBar logout={handleLogout} user={user} loggedIn={loggedIn} setDirty2={setDirty2} />
 
-            <Routes>
-              <Route path='/' element={loading ? <LoadingLayout/> :
-              <MainLayout planesInfo={planesInfo} dirty={dirty} setDirty={setDirty} setDirty2={setDirty2} />} />
-              <Route path='plane/:type' element={<StatusLayout planes={planes} setPlanes={setPlanes} loggedIn={loggedIn}
-                     addReservationByGrid={addReservationByGrid} reservation={reservation} setReservation={setReservation}
-                     dirty2={dirty2} setDirty2={setDirty2} deleteReservation={deleteReservation} numberSeats={numberSeats}
-                     setNumberSeats={setNumberSeats} addReservationByNumber={addReservationByNumber}
-                     setDirty={setDirty} />} >
-                  <Route index element={<GridLayout loggedIn ={loggedIn} planes={planes} setPlanes={setPlanes} dirty={dirty} setDirty={setDirty}
-                          reservation={reservation} setReservation={setReservation} seatColors={seatColors} setSeatColors={setSeatColors}
-                          dirty2={dirty2} setDirty2={setDirty2} highlighted={highlighted} setHighlighted={setHighlighted}
-                          reservationConflict={reservationConflict} setReservationConflict={setReservationConflict}
-                          planesInfo={planesInfo} />} />
-                  <Route path='automatic' element={loggedIn ? 
-                  <InputLayout addReservationByNumber={addReservationByNumber} 
-                    numberSeats={numberSeats} setNumberSeats={setNumberSeats} /> 
+              <Routes>
+                <Route path='/' element={loading ? <LoadingLayout/> :
+                <MainLayout planesInfo={planesInfo} setDirty={setDirty} setDirty2={setDirty2} />} />
+                <Route path='plane/:type' element={
+                  <StatusLayout loggedIn={loggedIn} dirty2={dirty2} setDirty2={setDirty2} setDirty={setDirty} />
+                  }>
+                  <Route index element={
+                    <GridLayout loggedIn ={loggedIn} dirty={dirty} setDirty={setDirty} dirty2={dirty2} 
+                      setDirty2={setDirty2} planesInfo={planesInfo} />
+                    }/>
+                  <Route path='automatic' element={
+                    loggedIn ? <InputLayout/> 
                     : <Navigate replace to='/login'/>} />
                   <Route path='*' element={<NotFoundLayout/>} />
-              </Route>
-              <Route path='/login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
-              <Route path='*' element={<NotFoundLayout/>} />
-            </Routes>
+                </Route>
+                <Route path='/login' element={!loggedIn ? <LoginLayout login={handleLogin}/> : <Navigate replace to='/'/>}/>
+                <Route path='*' element={<NotFoundLayout/>} />
+              </Routes>
 
-            <Toast show={message !== ''} onClose={() => setMessage('')} delay={5000} autohide bg="danger">
-              <Toast.Body>{message}</Toast.Body>
-            </Toast>
+              <Toast show={message !== ''} className='toast-style' onClose={() => setMessage('')} delay={5000} autohide bg="danger">
+                <Toast.Body>{message}</Toast.Body>
+              </Toast>
 
-          </Container>
+            </Container>
+          </ReservationContext.Provider>
         </OccupancyContext.Provider>
       </MessageContext.Provider>
    </BrowserRouter>

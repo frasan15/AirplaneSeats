@@ -164,7 +164,7 @@ small.watch-date {
 }
 
 .airplane-fixed-size {
-  width: 10em;
+  height: 10em;
 }
 
 .custom-heading {
@@ -178,4 +178,17 @@ small.watch-date {
   font-size: 20px;
   color: #333;
   font-weight: bold;
+}
+
+.toast-style {
+  font-size: 18px; 
+  font-weight: bold; 
+  text-transform: uppercase
+}
+
+.input-box {
+  font-size: 20px;
+  color: #333;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
