@@ -19,17 +19,6 @@ function Grid (props) {
   //this state contains, if a seat has been clicked, the related seat information
   const [clickedSeat, setClickedSeat] = useState({});
 
-  //Whenever this component is mounted or the 'dirty' state turns true, the current plane seats list is 
-  //checked and a new array is created, where id represents the id of the seat whereas the color represents 
-  //the seat's status: if the seat is occupied then the color is grey, otherwise if it's available the color is green.
-  //At the end the dirty1 status is setted to false -> this part is likely useless
-  useEffect(() => {
-    setSeatColors(planes.map(plane => ({
-      id: plane.rowId,
-      color: plane.userEmail !== null ? '#888888' : 'MediumSeaGreen'
-    })))
-  }, [dirty]);
-
   //whenever the user selects a seat there are three possible scenarios:
   //1. If the seat is occupied nothing happens and the dirty1 state turns false
   //2. If the seat is available then its color becomes orange, the 'requested' and 'available' states are updated
@@ -100,16 +89,17 @@ function Grid (props) {
     }
 
   }, [highlighted])
-  
+
   return (
     <>
-      {(dirty || dirty1) ? 
+      {(dirty ||  seatColors.length !== planes.length) ? 
       <Button variant="primary" disabled>
         <Spinner as="span" animation="grow" size="sm" role="status" aria-hidden="true"/>
         Loading...
       </Button> :
       <div>
-        <MyTable type={type} clickedSeat={clickedSeat} setClickedSeat={setClickedSeat} setDirty1={setDirty1} planesInfo={props.planesInfo} />
+        <MyTable type={type} clickedSeat={clickedSeat} setClickedSeat={setClickedSeat} setDirty1={setDirty1}
+                 planesInfo={props.planesInfo} loggedIn={loggedIn} />
       </div>
       }
     </>
@@ -121,7 +111,7 @@ function MyTable(props) {
   const type = props.type;
   const setClickedSeat = props.setClickedSeat
   const setDirty1 = props.setDirty1
-
+  const loggedIn = props.loggedIn
   const planesInfo = props.planesInfo.find(p => p.type === type)
   const numRows = planesInfo.rowNumber;
   const numCols = planesInfo.seatNumber;
@@ -137,7 +127,7 @@ function MyTable(props) {
 
       //when a seat is clicked the dirty1 state turns true and the clickedSeat state becomes the current clicked seat
       const handleClick = () => {
-        if(!highlighted){
+        if(!highlighted && loggedIn){
           setClickedSeat(seatData);
           setDirty1(true)
         }

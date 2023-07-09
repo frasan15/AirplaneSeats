@@ -121,7 +121,7 @@ function StatusLayout(props) {
 }
 
 function GridLayout(props){
-  const { planes, setPlanes } = useContext(ReservationContext)
+  const { planes, setPlanes, setSeatColors } = useContext(ReservationContext)
   const dirty = props.dirty;
   const setDirty = props.setDirty;
   const {handleErrors} = useContext(MessageContext);
@@ -142,6 +142,16 @@ function GridLayout(props){
       })
   }, [dirty]
   )
+
+  //Whenever 'dirty' state turns true, the current plane seats list is 
+  //checked and a new array is created, where id represents the id of the seat whereas the color represents 
+  //the seat's status: if the seat is occupied then the color is grey, otherwise if it's available the color is green.
+  useEffect(() => {
+    setSeatColors(planes.map(plane => ({
+      id: plane.rowId,
+      color: plane.userEmail !== null ? '#888888' : 'MediumSeaGreen'
+    })))
+  }, [dirty]);
 
   return(
     <>
